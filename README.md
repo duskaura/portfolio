@@ -1,1 +1,100 @@
 # portfolio
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI Chat Website</title>
+  <style>
+    body {margin:0;font-family:sans-serif;background:#111;color:#eee;display:flex;flex-direction:column;height:100vh}
+    header {padding:12px;background:#222;text-align:center;font-weight:bold}
+    #messages {flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+    .msg {max-width:70%;padding:10px;border-radius:8px}
+    .user {align-self:flex-end;background:#0ea5a4;color:#000}
+    .ai {align-self:flex-start;background:#333}
+    #composer {display:flex;padding:12px;border-top:1px solid #333}
+    textarea {flex:1;padding:10px;border-radius:6px;border:none;resize:none}
+    button {margin-left:10px;padding:10px 16px;border:none;border-radius:6px;background:#7c3aed;color:#fff;cursor:pointer}
+  </style>
+</head>
+<body>
+  <header>AI Chat Website</header>
+  <div id="messages"></div>
+  <div id="composer">
+    <textarea id="input" rows="1" placeholder="Ask the AI..."></textarea>
+    <button id="send">Send</button>
+  </div>
+
+  <script>
+    const messagesEl = document.getElementById('messages');
+    const inputEl = document.getElementById('input');
+    const sendBtn = document.getElementById('send');
+
+    function addMessage(text, who){
+      const div = document.createElement('div');
+      div.className = 'msg ' + who;
+      div.textContent = text;
+      messagesEl.appendChild(div);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    async function sendMessage(){
+      const text = inputEl.value.trim();
+      if(!text) return;
+      addMessage(text, 'user');
+      inputEl.value = '';
+
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ message: text })
+        });
+        const data = await res.json();
+        addMessage(data.reply || 'No reply', 'ai');
+      } catch(err){
+        addMessage('Error: ' + err.message, 'ai');
+      }
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    inputEl.addEventListener('keydown', e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); }});
+
+    // Greeting
+    addMessage('Hello! I am your AI assistant. Ask me anything.', 'ai');
+  </script>
+
+  <!--
+    To make this actually talk to an AI, create a server (Node.js example):
+
+    1. npm init -y
+    2. npm install express dotenv
+    3. Create a .env file with: OPENAI_API_KEY=sk-...
+
+    // server.js
+    const express = require('express');
+    const fetch = global.fetch;
+    require('dotenv').config();
+    const app = express();
+    app.use(express.json());
+
+    app.post('/api/chat', async (req,res)=>{
+      const { message } = req.body;
+      try{
+        const r = await fetch('https://api.openai.com/v1/chat/completions',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':`Bearer ${process.env.OPENAI_API_KEY}`},
+          body: JSON.stringify({ model:'gpt-4o-mini', messages:[{role:'user',content:message}] })
+        });
+        const j = await r.json();
+        const reply = j.choices?.[0]?.message?.content || 'Error';
+        res.json({ reply });
+      }catch(e){ res.status(500).json({ reply:'Server error' }); }
+    });
+
+    app.listen(3000, ()=>console.log('Server running at http://localhost:3000'));
+
+    Then open index.html in browser while the server runs.
+  -->
+</body>
+</html>
